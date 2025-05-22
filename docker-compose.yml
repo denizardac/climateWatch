@@ -1,0 +1,120 @@
+services:
+  jupyter:
+    image: jupyter/pyspark-notebook:latest
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./notebooks:/home/jovyan/work
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+    depends_on:
+      - spark
+      - hdfs-namenode
+      - mongodb
+
+  mongodb:
+    image: mongo:6.0
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./data_storage/mongodb:/data/db
+
+  hdfs-namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    environment:
+      - CLUSTER_NAME=climatewatch
+    ports:
+      - "9870:9870"
+    volumes:
+      - ./data_storage/hdfs/namenode:/hadoop/dfs/name
+    env_file:
+      - ./docker/hadoop.env
+
+  hdfs-datanode:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    environment:
+      - CLUSTER_NAME=climatewatch
+    ports:
+      - "9864:9864"
+    volumes:
+      - ./data_storage/hdfs/datanode:/hadoop/dfs/data
+    env_file:
+      - ./docker/hadoop.env
+    depends_on:
+      - hdfs-namenode
+
+  spark:
+    image: bitnami/spark:latest
+    environment:
+      - SPARK_MODE=master
+      - SPARK_MASTER_HOST=spark
+    ports:
+      - "8080:8080"
+    depends_on:
+      - hdfs-namenode
+      - hdfs-datanode
+    volumes:
+      - ./data_storage/spark:/bitnami/spark
+
+  zookeeper:
+    image: bitnami/zookeeper:latest
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: bitnami/kafka:latest
+    environment:
+      - KAFKA_BROKER_ID=1
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092
+    ports:
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+    volumes:
+      - ./data_storage/kafka-data:/bitnami/kafka
+
+  hive-metastore:
+    image: bde2020/hive:2.3.2-postgresql-metastore
+    environment:
+      - HIVE_METASTORE_DB_TYPE=postgres
+    ports:
+      - "9083:9083"
+    depends_on:
+      - hdfs-namenode
+      - hdfs-datanode
+    volumes:
+      - ./data_storage/hive:/opt/hive/data
+
+  hive-server:
+    image: bde2020/hive:2.3.2-postgresql-metastore
+    environment:
+      - HIVE_METASTORE_DB_TYPE=postgres
+    ports:
+      - "10000:10000"
+    depends_on:
+      - hive-metastore
+    volumes:
+      - ./data_storage/hive:/opt/hive/data
+
+  hbase:
+    image: harisekhon/hbase:1.2
+    ports:
+      - "16010:16010"
+      - "2182:2182"
+    environment:
+      - HBASE_MANAGES_ZK=false
+    depends_on:
+      - hdfs-namenode
+      - hdfs-datanode
+      - zookeeper
+    volumes:
+      - ./data_storage/hbase:/data/hbase
+
+networks:
+  default:
+    name: climatewatch-net 
