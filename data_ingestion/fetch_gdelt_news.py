@@ -16,7 +16,7 @@ def setup_logger(log_path):
         datefmt='%Y-%m-%d %H:%M:%S'
     )
 
-def fetch_gdelt_for_date(date, target_dir="data_storage/gdelt", save_to_mongo=True, keywords=None, log_path="logs/data_ingestion.log"):
+def fetch_gdelt_for_date(date, target_dir="data_storage/gdelt", save_to_mongo=True, keywords=None, log_path="logs/data_ingestion.log", mongo_host="localhost"):
     try:
         date_str = date.strftime("%Y%m%d")
         url = f"http://data.gdeltproject.org/events/{date_str}.export.CSV.zip"
@@ -46,7 +46,7 @@ def fetch_gdelt_for_date(date, target_dir="data_storage/gdelt", save_to_mongo=Tr
 
         if save_to_mongo and not df.empty:
             from pymongo import MongoClient
-            client = MongoClient("mongodb://mongodb:27017/")
+            client = MongoClient(f"mongodb://{mongo_host}:27017/")
             db = client['climatewatch']
             collection = db['gdelt_events']
             collection.delete_many({"date": date_str})
@@ -68,6 +68,7 @@ if __name__ == "__main__":
     parser.add_argument('--no_mongo', action='store_true', help='MongoDB kaydını kapat')
     parser.add_argument('--keywords', type=str, nargs='*', default=["CLIMATE", "ENVIRONMENT", "WEATHER", "GLOBAL WARMING", "CO2", "CARBON", "EMISSION"], help='Filtre anahtar kelimeleri')
     parser.add_argument('--log_path', type=str, default="logs/data_ingestion.log", help='Log dosyası yolu')
+    parser.add_argument('--mongo_host', type=str, default="mongodb", help='MongoDB host adresi (localhost veya mongodb)')
     args = parser.parse_args()
 
     if args.start_date and args.end_date:
@@ -75,8 +76,8 @@ if __name__ == "__main__":
         end = datetime.strptime(args.end_date, "%Y%m%d")
         delta = (end - start).days
         for i in range(delta + 1):
-            fetch_gdelt_for_date(start + timedelta(days=i), target_dir=args.target_dir, save_to_mongo=not args.no_mongo, keywords=args.keywords, log_path=args.log_path)
+            fetch_gdelt_for_date(start + timedelta(days=i), target_dir=args.target_dir, save_to_mongo=not args.no_mongo, keywords=args.keywords, log_path=args.log_path, mongo_host=args.mongo_host)
     else:
         # Varsayılan: son 7 gün
         for i in range(7):
-            fetch_gdelt_for_date(datetime.today() - timedelta(days=i), target_dir=args.target_dir, save_to_mongo=not args.no_mongo, keywords=args.keywords, log_path=args.log_path) 
+            fetch_gdelt_for_date(datetime.today() - timedelta(days=i), target_dir=args.target_dir, save_to_mongo=not args.no_mongo, keywords=args.keywords, log_path=args.log_path, mongo_host=args.mongo_host) 

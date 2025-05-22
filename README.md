@@ -3,6 +3,93 @@
 ## Proje Amacı
 Küresel iklim değişikliğiyle ilgili haber ve çevresel verileri büyük veri teknolojileriyle analiz etmek, medya ilgisi ile bilimsel gerçekler arasındaki ilişkiyi ortaya koymak.
 
+## Proje Durumu (Mayıs 2024)
+- Farklı kaynaklardan (GDELT, Google Trends, NOAA, climate-laws.org, COP zirveleri, afetler) veri çekme scriptleri hazır.
+- Büyük veri depolama ve işleme için Docker ile MongoDB, HDFS, Spark, Kafka altyapısı kurulabiliyor.
+- Ham veri dosyaları repoya eklenmiyor; veri indirme scriptleriyle gerçek veriler indiriliyor.
+- Veri işleme, analiz ve modelleme için temel notebook altyapısı mevcut, ancak analiz pipeline'ı ve görselleştirme adımları geliştirilmeye açıktır.
+
+## Gereksinimler
+- Docker ve Docker Compose
+- Python 3.8+
+- Gerekli Python paketleri (örn. pandas, requests, pytrends, pymongo, pyspark, kafka-python, pdfplumber, tesseract vb.)
+- (Opsiyonel) Tesseract OCR (PDF extraction için)
+
+### Python Paketlerini Kurmak için:
+```bash
+pip install -r requirements.txt
+```
+> Not: requirements.txt dosyasını kendiniz oluşturmalısınız. Her scriptin başında gerekli paketler belirtilmiştir.
+
+## Klasör Yapısı ve Veri Yönetimi
+- **data_storage/**: Ham ve işlenmiş veri dosyaları (CSV, JSON, Parquet). Bu klasör .gitignore ile repoya eklenmez.
+- **data_ingestion/**: Tüm veri indirme ve ön işleme scriptleri burada.
+- **logs/**: Script logları burada tutulur.
+- **notebooks/**: Analiz ve modelleme için Jupyter notebookları.
+- **docker-compose.yml**: Tüm büyük veri servislerini başlatmak için.
+
+## Çalıştırma Sırası
+
+### 1. Docker Servislerini Başlat
+```bash
+docker-compose up -d
+```
+- MongoDB, HDFS, Spark, Jupyter, Kafka gibi servisler başlatılır.
+
+### 2. Gerekli Klasörleri Oluştur
+```bash
+mkdir -p data_storage/hdfs/namenode data_storage/hdfs/datanode data_storage/mongodb data_storage/spark data_storage/climate data_storage/gdelt notebooks logs
+```
+
+### 3. Gerçek Verileri İndir
+Aşağıdaki scriptleri çalıştırarak ilgili veri kaynaklarından gerçek verileri indirin:
+
+#### a) İklim Verisi
+```bash
+python data_ingestion/fetch_climate_data.py --target_dir data_storage/climate --log_path logs/data_ingestion.log
+```
+
+#### b) GDELT Haber Verisi
+```bash
+python data_ingestion/fetch_gdelt_news.py --start_date 20240501 --end_date 20240507 --keywords CLIMATE ENVIRONMENT WEATHER --target_dir data_storage/gdelt --log_path logs/data_ingestion.log
+```
+
+#### c) Doğal Afet, Zirve, Politika Değişikliği, Google Trends
+```bash
+python data_ingestion/fetch_disaster_events.py --start_date 20230101 --end_date 20231231 --target_dir data_storage/disasters
+python data_ingestion/fetch_climate_summits.py --target_dir data_storage/summits
+python data_ingestion/fetch_policy_changes.py --target_dir data_storage/policies
+python data_ingestion/fetch_google_trends.py --keyword "climate change" --start_date 2023-01-01 --end_date 2023-01-31 --target_dir data_storage/trends
+```
+> Her scriptin başında gerekli parametreler ve opsiyonlar açıklanmıştır.
+
+### 4. Jupyter Notebook ile Analiz
+- [http://localhost:8888](http://localhost:8888) adresinden Jupyter'a erişin.
+- Analiz ve modelleme için `notebooks/` klasöründe yeni notebooklar oluşturun.
+- Spark ve MongoDB bağlantısı için örnek kodlar ve açıklamalar eklenmiştir.
+
+### 5. Log ve Hata Yönetimi
+- Tüm veri çekme işlemleri ve hatalar `logs/data_ingestion.log` dosyasına kaydedilir.
+
+## Notlar ve İpuçları
+- **Ham veri dosyaları repoya eklenmez.** Gerçek veriyi scriptlerle indirmeniz gerekir.
+- **Büyük veriyle çalışırken** Spark ve HDFS kullanımı önerilir.
+- **Veri işleme ve analiz pipeline'ı** için örnek notebooklar ve scriptler geliştirilmeye açıktır.
+- **Ek veri kaynakları** veya yeni analizler eklemek için `data_ingestion/` altına yeni scriptler ekleyebilirsiniz.
+
+## Geliştirici Notları
+- Kodunuzu ve veri pipeline'ınızı periyodik çalıştırmak için cron veya benzeri zamanlayıcılar kullanabilirsiniz.
+- Her scriptin başında gerekli Python paketleri ve kullanım örnekleri açıklanmıştır.
+- Proje büyüdükçe, analiz ve modelleme adımlarını modüler hale getirmek için notebook ve script yapısını sade ve açıklayıcı tutun.
+
+## Lisans ve Atıf
+- Proje açık kaynak olarak paylaşılacaktır.
+- UNFCCC katılımcı verisi için [bagozzib/UNFCCC-Attendance-Data](https://github.com/bagozzib/UNFCCC-Attendance-Data) projesinden alınan kodlar CC-BY-4.0 lisansı ile kullanılmıştır.
+
+---
+
+**Herhangi bir sorunda veya katkı yapmak için lütfen issue açın veya pull request gönderin!**
+
 ## Mimari Diyagram (Text Tablo)
 
 ```
@@ -65,116 +152,52 @@ Küresel iklim değişikliğiyle ilgili haber ve çevresel verileri büyük veri
 ## Ek Veri Kaynakları ve Alternatif Medya Scriptleri
 Aşağıdaki scriptler, ek veri kaynaklarından veri çekmek için iskelet olarak eklenmiştir:
 
-- `fetch_disaster_events.py`: Doğal afet (yangın, sel, kasırga, deprem vb.) verisi çekmek için.
-- `fetch_climate_summits.py`: Uluslararası iklim zirveleri ve önemli çevre etkinlikleri verisi çekmek için.
-- `fetch_policy_changes.py`: Ülkelerin iklim politikası değişiklikleri, anlaşmalar ve yasalar için veri çekmek için.
-- `fetch_twitter_data.py`: Twitter API ile iklim değişikliğiyle ilgili tweetleri çekmek için.
-- `fetch_google_trends.py`: Google Trends API veya pytrends ile arama ilgisi verisi çekmek için.
+- `fetch_disaster_events.py`: Doğal afet (yangın, sel, kasırga, deprem vb.) verisi çekmek için. Artık ReliefWeb API ile gerçek afet verisi çeker.
+- `fetch_climate_summits.py`: Uluslararası iklim zirveleri ve önemli çevre etkinlikleri verisi çekmek için. Artık Wikipedia'dan COP zirveleri listesini çeker.
+- `fetch_policy_changes.py`: Ülkelerin iklim politikası değişiklikleri, anlaşmalar ve yasalar için veri çekmek için. Artık climate-laws.org sitesinden CSV indirir.
+- `fetch_google_trends.py`: Google Trends API veya pytrends ile arama ilgisi verisi çekmek için. Artık pytrends ile gerçek veri çeker.
 
-Her script, ilgili API veya veri kaynağına bağlanmak için temel iskelet ve örnek argümanlar içerir. Gerçek veri çekimi için API anahtarı ve endpoint entegrasyonu gereklidir.
+> **Not:** Twitter API scripti kaldırıldı. Twitter API artık çoğu kullanım için paralı ve ücretsiz erişim çok kısıtlı olduğu için bu script projeden çıkarıldı.
+
+Her script, ilgili API veya veri kaynağına bağlanarak gerçek veri çeker ve çıktıyı CSV/JSON olarak kaydeder. Gerçek veri çekimi için ek Python paketleri gerekebilir (ör. `requests`, `pandas`, `pytrends`).
 
 ### Örnek Kullanımlar
 
 ```bash
-# Doğal afet verisi çekme (örnek)
-python data_ingestion/fetch_disaster_events.py --api_url <API_URL> --start_date 20230101 --end_date 20231231 --target_dir data_storage/disasters
+# Doğal afet verisi çekme (ReliefWeb API)
+python data_ingestion/fetch_disaster_events.py --start_date 20230101 --end_date 20231231 --target_dir data_storage/disasters
 
-# İklim zirvesi verisi çekme (örnek)
-python data_ingestion/fetch_climate_summits.py --api_url <API_URL> --target_dir data_storage/summits
+# İklim zirvesi verisi çekme (Wikipedia)
+python data_ingestion/fetch_climate_summits.py --target_dir data_storage/summits
 
-# Politika değişikliği verisi çekme (örnek)
-python data_ingestion/fetch_policy_changes.py --api_url <API_URL> --target_dir data_storage/policies
+# Politika değişikliği verisi çekme (climate-laws.org)
+python data_ingestion/fetch_policy_changes.py --target_dir data_storage/policies
 
-# Twitter verisi çekme (örnek)
-python data_ingestion/fetch_twitter_data.py --api_key <API_KEY> --query "climate change" --start_date 20230101 --end_date 20230131 --target_dir data_storage/twitter
-
-# Google Trends verisi çekme (örnek)
-python data_ingestion/fetch_google_trends.py --keyword "climate change" --start_date 20230101 --end_date 20230131 --target_dir data_storage/trends
+# Google Trends verisi çekme (pytrends)
+python data_ingestion/fetch_google_trends.py --keyword "climate change" --start_date 2023-01-01 --end_date 2023-01-31 --target_dir data_storage/trends
 ```
 
-## Kurulum ve Çalıştırma
+## UNFCCC Katılımcı Verisi (COP Attendance) - Otomatik PDF'den Çekme
 
-### 1. Gerekli Klasörleri Oluştur
-```bash
-mkdir -p data_storage/hdfs/namenode data_storage/hdfs/datanode data_storage/mongodb data_storage/spark data_storage/climate data_storage/gdelt notebooks logs
-```
+Bu projede, UNFCCC (COP) katılımcı verisini otomatik olarak PDF dosyalarından çıkarmak ve işlemek için [bagozzib/UNFCCC-Attendance-Data](https://github.com/bagozzib/UNFCCC-Attendance-Data) projesinin açık kaynak kod altyapısı entegre edilmiştir.
 
-### 2. Docker Servislerini Başlat
-```bash
-docker-compose up -d
-```
-- **Tüm servisler (Jupyter, MongoDB, HDFS, Spark) otomatik başlar.**
-- Servislerin durumunu kontrol etmek için:
-  ```bash
-  docker ps
-  ```
+### Kullanım Adımları
 
-### 3. Jupyter Notebook'a Erişim
-- Tarayıcıda [http://localhost:8888](http://localhost:8888) adresine git.
-- Gerekirse token'ı görmek için:
-  ```bash
-  docker logs climatewatch-jupyter-1
-  ```
-- Jupyter'ı veri toplama script'lerinden önce veya sonra açabilirsin.
+1. **Gerekli Bağımlılıkları Kurun:**
+   - Python için: `pip install -r requirements.txt` (pdfplumber, pytesseract, pillow, pdf2image vb.)
+   - Tesseract OCR kurulumu gereklidir. (Windows için: https://github.com/tesseract-ocr/tesseract)
 
-### 4. Otomatik Veri Toplama Script'leri
-#### a) İklim Verisi
-```bash
-python data_ingestion/fetch_climate_data.py --target_dir data_storage/climate --log_path logs/data_ingestion.log
-```
-- `--no_mongo` parametresi ile MongoDB kaydını kapatabilirsin.
+2. **PDF'den Veri Çıkarımı:**
+   - `extract_pdf_data.py` scripti ile PDF dosyasının yapısına göre (tek/sütun, metin/görsel) uygun extraction class'ı seçin.
+   - Çıkan veriyi `inputs_file.py` içinde `extracted_input_data` değişkenine kaydedin.
 
-#### b) GDELT Haber Verisi (Tarih aralığı ve anahtar kelime ile)
-```bash
-python data_ingestion/fetch_gdelt_news.py --start_date 20240501 --end_date 20240507 --keywords CLIMATE ENVIRONMENT WEATHER --target_dir data_storage/gdelt --log_path logs/data_ingestion.log
-```
-- `--no_mongo` parametresi ile MongoDB kaydını kapatabilirsin.
-- `--keywords` ile istediğin anahtar kelimeleri belirtebilirsin.
-- Başlangıç ve bitiş tarihi verilmezse son 7 gün otomatik indirilir.
+3. **Veri Sınıflandırma:**
+   - `classify_data.py` scripti ile veriyi; Grup Tipi, Delegasyon, Unvan, İsim, Görev, Bölüm, Kurum gibi alanlara otomatik ayırın.
 
-#### Log ve Hata Yönetimi
-- Tüm işlemler ve hatalar `logs/data_ingestion.log` dosyasına kaydedilir.
-- Hatalar terminalde de gösterilir.
+4. **Veri Temizleme ve Sonuç:**
+   - R scriptleri (`FinalDataCleaning_COP.R` vb.) ile son temizlik ve CSV üretimi yapılabilir.
 
-### 5. Analiz ve Modelleme
-- Jupyter Notebook'ta Spark ve MongoDB ile analiz yapabilirsin.
-- Örnek notebooklar `notebooks/` klasöründe bulunur.
+> Detaylı adımlar ve örnekler için: [UNFCCC Project Code Execution Steps](https://github.com/bagozzib/UNFCCC-Attendance-Data/wiki/UNFCCC-Project-Code--Execution-Steps)
 
-## Sık Sorulanlar
-- **Jupyter'ı ne zaman açmalıyım?**  
-  Veri toplama script'lerinden önce veya sonra açabilirsin. Analiz için Jupyter'ı kullanacaksan, Docker servisleri açık olmalı.
-- **Docker servisleri otomatik mi başlar?**  
-  `docker-compose up -d` komutuyla hepsi başlar. Kapatmak için `docker-compose down`.
-- **Veri script'leri tekrar çalıştırılırsa ne olur?**  
-  Aynı veriyi tekrar eklememek için script'ler önce eski veriyi siler, sonra yenisini ekler.
-- **Log dosyası nerede?**  
-  Tüm işlemler ve hatalar `logs/data_ingestion.log` dosyasına kaydedilir.
-
-## Geliştirici Notları
-- Yeni veri kaynakları eklemek için `data_ingestion/` altına yeni scriptler ekleyin.
-- Pipeline'ı periyodik çalıştırmak için cron veya task scheduler kullanılabilir.
-- Tüm kodlar ve scriptler açık kaynak olarak paylaşılacaktır.
-
-## Opsiyonel Büyük Veri Servisleri
-
-- **Kafka**: Gerçek zamanlı veri akışı ve streaming ingestion için kullanılır. Haber, sosyal medya veya sensör verisi gibi sürekli akan verileri toplamak ve işlemek için idealdir.
-- **Hive**: HDFS üzerinde SQL tabanlı veri ambarı sağlar. Büyük veri üzerinde SQL sorguları ile analiz yapmak için kullanılır.
-- **HBase**: Dağıtık tablo veritabanı. Büyük ölçekli zaman serisi veya anahtar-değer tabanlı veri için uygundur.
-
-### Docker ile Servisleri Başlatma
-
-```bash
-docker-compose up -d
-```
-Tüm servisler (Jupyter, MongoDB, HDFS, Spark, Kafka, Hive, HBase) otomatik başlar.
-
-### Servislere Bağlantı ve Kullanım
-
-- **Kafka**: Bağlantı noktası: `localhost:9092`
-  - Örnek Python kütüphanesi: `kafka-python`
-- **Hive**: Metastore: `localhost:9083`, Server: `localhost:10000`
-  - Örnek Python kütüphanesi: `pyhive`
-- **HBase**: Web arayüzü: [http://localhost:16010](http://localhost:16010)
-  - Örnek Python kütüphanesi: `happybase`
-
-Her servisin detaylı kullanımı için ilgili Python kütüphanelerinin dökümantasyonuna bakınız. 
+### Kredilendirme
+Bu sistemin kod altyapısı [bagozzib/UNFCCC-Attendance-Data](https://github.com/bagozzib/UNFCCC-Attendance-Data) projesinden alınmış ve CC-BY-4.0 lisansı ile kullanılmıştır. Orijinal geliştiricilere atıf yapılmıştır. 

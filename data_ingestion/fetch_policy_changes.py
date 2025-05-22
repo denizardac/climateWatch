@@ -5,18 +5,26 @@ Gerçek API veya veri kaynağı entegrasyonu için endpoint ve anahtarlar eklenm
 """
 
 import argparse
+import requests
+import os
 
-def fetch_policy_changes(api_url, target_dir):
-    # TODO: API'den veya CSV/JSON kaynaktan veri çekme işlemi burada yapılacak
-    print(f"[INFO] Politika değişikliği verileri {api_url} üzerinden çekilecek ve {target_dir} klasörüne kaydedilecek.")
-    pass
+def fetch_policy_changes(target_dir):
+    os.makedirs(target_dir, exist_ok=True)
+    url = 'https://zenodo.org/records/10842614/files/POLICY_DATABASE_1.0.csv?download=1'
+    response = requests.get(url)
+    if response.status_code == 200:
+        out_path = os.path.join(target_dir, 'climate_policy_changes.csv')
+        with open(out_path, 'wb') as f:
+            f.write(response.content)
+        print(f"Politika değişikliği verisi kaydedildi: {out_path}")
+    else:
+        print(f"API hatası: {response.status_code}. Dosya indirilemedi.")
 
 def main():
-    parser = argparse.ArgumentParser(description='İklim politikası değişikliği verisi çekme scripti (iskele)')
-    parser.add_argument('--api_url', type=str, required=True, help='Politika API endpoint veya veri kaynağı URL')
+    parser = argparse.ArgumentParser(description='İklim politikası değişikliği verisi çekme scripti (climate-laws.org)')
     parser.add_argument('--target_dir', type=str, required=True, help='Verinin kaydedileceği klasör')
     args = parser.parse_args()
-    fetch_policy_changes(args.api_url, args.target_dir)
+    fetch_policy_changes(args.target_dir)
 
 if __name__ == '__main__':
     main() 

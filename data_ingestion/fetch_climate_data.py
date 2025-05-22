@@ -13,7 +13,7 @@ def setup_logger(log_path):
         datefmt='%Y-%m-%d %H:%M:%S'
     )
 
-def fetch_and_save_climate_data(target_dir="data_storage/climate", save_to_mongo=True, log_path="logs/data_ingestion.log"):
+def fetch_and_save_climate_data(target_dir="data_storage/climate", save_to_mongo=True, log_path="logs/data_ingestion.log", mongo_host="localhost"):
     setup_logger(log_path)
     try:
         url = "https://datahub.io/core/global-temp/r/annual.csv"
@@ -26,7 +26,7 @@ def fetch_and_save_climate_data(target_dir="data_storage/climate", save_to_mongo
 
         if save_to_mongo:
             from pymongo import MongoClient
-            client = MongoClient("mongodb://mongodb:27017/")
+            client = MongoClient(f"mongodb://{mongo_host}:27017/")
             db = client['climatewatch']
             collection = db['global_temp']
             collection.delete_many({})
@@ -42,5 +42,6 @@ if __name__ == "__main__":
     parser.add_argument('--target_dir', type=str, default="data_storage/climate", help='Verinin kaydedileceği klasör')
     parser.add_argument('--no_mongo', action='store_true', help='MongoDB kaydını kapat')
     parser.add_argument('--log_path', type=str, default="logs/data_ingestion.log", help='Log dosyası yolu')
+    parser.add_argument('--mongo_host', type=str, default="mongodb", help='MongoDB host adresi (localhost veya mongodb)')
     args = parser.parse_args()
-    fetch_and_save_climate_data(target_dir=args.target_dir, save_to_mongo=not args.no_mongo, log_path=args.log_path) 
+    fetch_and_save_climate_data(target_dir=args.target_dir, save_to_mongo=not args.no_mongo, log_path=args.log_path, mongo_host=args.mongo_host) 
