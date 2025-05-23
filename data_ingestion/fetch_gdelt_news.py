@@ -17,6 +17,7 @@ def setup_logger(log_path):
     )
 
 def fetch_gdelt_for_date(date, target_dir="data_storage/gdelt", save_to_mongo=True, keywords=None, log_path="logs/data_ingestion.log", mongo_host="localhost"):
+    setup_logger(log_path)
     try:
         date_str = date.strftime("%Y%m%d")
         url = f"http://data.gdeltproject.org/events/{date_str}.export.CSV.zip"

@@ -128,60 +128,6 @@ def haber_analizi_yap(haber_verileri):
     
     return duygu_df if duygu_skorlari else None
 
-def fetch_google_trends(city_name, start_date, end_date):
-    """
-    Google Trends verilerini indirir.
-    
-    Args:
-        city_name (str): Şehir adı
-        start_date (str): Başlangıç tarihi
-        end_date (str): Bitiş tarihi
-    """
-    try:
-        # Google Trends bağlantısı
-        pytrends = TrendReq(hl='en-US', tz=360)
-        
-        # Arama terimleri
-        search_terms = [
-            f"{city_name} weather",
-            f"{city_name} climate",
-            f"{city_name} temperature",
-            f"{city_name} news"
-        ]
-        
-        # Tarih aralığını ayarla
-        timeframe = f"{start_date} {end_date}"
-        
-        # Arama yap
-        pytrends.build_payload(
-            search_terms,
-            cat=0,
-            timeframe=timeframe,
-            geo='US'
-        )
-        
-        # Verileri al
-        trends_data = pytrends.interest_over_time()
-        
-        if trends_data.empty:
-            print(f"Uyarı: {city_name} için Google Trends verisi bulunamadı!")
-            return None
-        
-        # Veriyi düzenle
-        trends_data = trends_data.reset_index()
-        trends_data = trends_data.rename(columns={'date': 'date'})
-        
-        # Veri kalitesi kontrolü
-        print(f"\nGoogle Trends Veri Kalitesi Kontrolü - {city_name}:")
-        print(f"Toplam gün sayısı: {len(trends_data)}")
-        print(f"Benzersiz tarih sayısı: {trends_data['date'].nunique()}")
-        
-        return trends_data
-        
-    except Exception as e:
-        print(f"Hata: Google Trends verisi alınamadı - {e}")
-        return None
-
 def fetch_climate_data(city_code, start_date, end_date):
     """NOAA'dan iklim verilerini çek ve işle"""
     try:
@@ -820,11 +766,7 @@ def create_visualizations(merged_data, country_name, start_date, end_date):
         output_dir = 'output'
         os.makedirs(output_dir, exist_ok=True)
         
-        date_format = '%Y-%m-%d'
-        start_date_str = start_date.strftime(date_format) if isinstance(start_date, datetime) else start_date.strftime(date_format) if isinstance(start_date, date) else str(start_date)
-        end_date_str = end_date.strftime(date_format) if isinstance(end_date, datetime) else end_date.strftime(date_format) if isinstance(end_date, date) else str(end_date)
-        
-        base_filename = f"{country_name.replace(' ', '_')}_{start_date_str}_to_{end_date_str}"
+        base_filename = f"{country_name.replace(' ', '_')}"
         
         if 'temperature' in merged_data.columns and 'news_count' in merged_data.columns:
             fig, ax1 = plt.subplots(figsize=(12, 6))

@@ -1,0 +1,46 @@
+# Proje genel ayarları
+project:
+  name: climateWatch
+  version: 1.0
+
+# Veri yolları
+data_paths:
+  gdelt: data_storage/gdelt
+  climate: data_storage/climate
+  disasters: data_storage/disasters
+  policies: data_storage/policies
+  summits: data_storage/summits
+  processed: data_storage/processed
+  logs: logs
+
+# Tarih aralıkları (örnek)
+date_range:
+  start_date: '2023-01-01'
+  end_date: '2023-01-07'
+
+# Anahtar kelimeler (haber filtreleme için)
+keywords:
+  - climate
+  - environment
+  - weather
+  - global warming
+  - co2
+  - carbon
+  - emission
+  - sustainability
+
+# MongoDB ayarları
+mongodb:
+  host: mongodb
+  port: 27017
+  db: climatewatch
+  collection_gdelt: gdelt_events
+
+# Spark ayarları
+spark:
+  app_name: climateWatch ETL
+  master: local[*]
+
+# Diğer parametreler
+general:
+  log_file: logs/pipeline.log 

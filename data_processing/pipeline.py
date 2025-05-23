@@ -66,22 +66,6 @@ class DataProcessingPipeline:
         self.logger.info(f"İklim verisi işlendi. {len(df)} satır kaldı.")
         return df
     
-    def process_trends_data(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Google Trends verisini işle"""
-        self.logger.info("Google Trends verisi işleniyor...")
-        
-        # Tarih sütununu datetime'a çevir
-        df['date'] = pd.to_datetime(df['date'])
-        
-        # Trend değerlerini normalize et
-        df['climate change'] = pd.to_numeric(df['climate change'], errors='coerce')
-        
-        # Hareketli ortalama hesapla
-        df['ma7'] = df['climate change'].rolling(window=7, min_periods=1).mean()
-        
-        self.logger.info(f"Google Trends verisi işlendi. {len(df)} satır kaldı.")
-        return df
-    
     def run_pipeline(self, data_dict: Dict[str, pd.DataFrame]) -> Dict[str, pd.DataFrame]:
         """Tüm veri işleme pipeline'ını çalıştır"""
         self.logger.info("Veri işleme pipeline'ı başlatılıyor...")
@@ -92,9 +76,6 @@ class DataProcessingPipeline:
             
             if 'climate' in data_dict:
                 self.processed_data['climate'] = self.process_climate_data(data_dict['climate'])
-            
-            if 'trends' in data_dict:
-                self.processed_data['trends'] = self.process_trends_data(data_dict['trends'])
             
             self.logger.info("Veri işleme pipeline'ı başarıyla tamamlandı.")
             return self.processed_data

@@ -403,71 +403,6 @@ class TimeSeriesAnalyzer:
             print(f"\n{start_year}-{end_year} Dönemi P-değerleri:")
             print(p_values)
         
-    def analyze_trends(self, merged_df):
-        """
-        Trend analizi yapar
-        """
-        if merged_df is None:
-            return
-            
-        # Veriyi temizle
-        merged_df = self.clean_data(merged_df)
-        
-        # Trend analizi için veriyi hazırla
-        trend_data = merged_df[['year', 'Temperature_Anomaly', 'CO2', 'article_count', 'avg_tone']].copy()
-        
-        # Her değişken için trend analizi
-        variables = ['Temperature_Anomaly', 'CO2', 'article_count', 'avg_tone']
-        trends = {}
-        
-        for var in variables:
-            # Lineer regresyon
-            slope, intercept, r_value, p_value, std_err = stats.linregress(trend_data['year'], trend_data[var])
-            trends[var] = {
-                'slope': slope,
-                'r_squared': r_value**2,
-                'p_value': p_value,
-                'std_err': std_err
-            }
-            
-            # Trend çizgisi
-            trend_data[f'{var}_trend'] = intercept + slope * trend_data['year']
-            
-        # Trend grafiklerini çiz
-        fig, axes = plt.subplots(2, 2, figsize=(15, 10))
-        fig.suptitle('Değişkenlerin Trend Analizi', fontsize=16)
-        
-        for i, var in enumerate(variables):
-            row = i // 2
-            col = i % 2
-            
-            # Orijinal veri
-            axes[row, col].scatter(trend_data['year'], trend_data[var], alpha=0.5, label='Gözlemler')
-            
-            # Trend çizgisi
-            axes[row, col].plot(trend_data['year'], trend_data[f'{var}_trend'], 
-                              'r-', label='Trend')
-            
-            # Trend bilgisi
-            trend_info = trends[var]
-            title = f'{var}\n'
-            title += f'Yıllık Değişim: {trend_info["slope"]:.4f}\n'
-            title += f'R²: {trend_info["r_squared"]:.4f}'
-            
-            axes[row, col].set_title(title)
-            axes[row, col].set_xlabel('Yıl')
-            axes[row, col].legend()
-            
-        plt.tight_layout()
-        plt.savefig(os.path.join(self.output_dir, 'trend_analysis.png'))
-        plt.close()
-        
-        # Trend sonuçlarını kaydet
-        trend_results = pd.DataFrame(trends).T
-        trend_results.to_csv(os.path.join(self.output_dir, 'trend_analysis.csv'))
-        
-        return trend_results
-        
     def analyze_seasonality(self, merged_df):
         """
         Mevsimsel etkileri analiz eder
@@ -591,9 +526,6 @@ class TimeSeriesAnalyzer:
         # Alt dönem analizlerini yap
         self.analyze_periods(merged_df)
         
-        # Trend analizi yap
-        trend_results = self.analyze_trends(merged_df)
-        
         # Mevsimsel analiz yap
         seasonal_results = self.analyze_seasonality(merged_df)
         
@@ -610,8 +542,6 @@ class TimeSeriesAnalyzer:
         print(corr_matrix)
         print("\nP-değerleri:")
         print(p_values)
-        print("\nTrend Analizi Sonuçları:")
-        print(trend_results)
         print("\nMevsimsel Analiz Sonuçları:")
         print(seasonal_results)
         if nlp_stats is not None:

@@ -6,6 +6,7 @@ services:
     volumes:
       - ./notebooks:/home/jovyan/work
       - ./data_storage:/home/jovyan/data_storage
+      - ./:/home/jovyan/climateWatch
     environment:
       - JUPYTER_ENABLE_LAB=yes
     depends_on:
@@ -55,7 +56,7 @@ services:
       - hdfs-namenode
       - hdfs-datanode
     volumes:
-      - ./data_storage/spark:/bitnami/spark
+      - ./:/workspace
 
   zookeeper:
     image: bitnami/zookeeper:latest
@@ -115,6 +116,18 @@ services:
       - zookeeper
     volumes:
       - ./data_storage/hbase:/data/hbase
+
+  pyspark-jupyter:
+    image: jupyter/pyspark-notebook:latest
+    container_name: pyspark-jupyter
+    ports:
+      - "8889:8888"
+    volumes:
+      - ./:/home/jovyan/work
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+    networks:
+      - default
 
 networks:
   default:
