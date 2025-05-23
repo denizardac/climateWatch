@@ -32,6 +32,7 @@ def fetch_gdelt_for_date(date, target_dir="data_storage/gdelt", save_to_mongo=Tr
             df = pd.read_csv(f, sep='\t', header=None, low_memory=False)
         os.makedirs(target_dir, exist_ok=True)
         csv_path = os.path.join(target_dir, f"{date_str}.csv")
+        df['date'] = date.strftime("%Y-%m-%d")
         df.to_csv(csv_path, index=False)
         print(f"{date_str} verisi indirildi ve kaydedildi: {csv_path}")
         logging.info(f"{date_str} GDELT verisi indirildi ve kaydedildi: {csv_path}")
