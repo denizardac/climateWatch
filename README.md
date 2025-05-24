@@ -9,6 +9,69 @@ Küresel iklim değişikliğiyle ilgili haber ve çevresel verileri büyük veri
 - Ham veri dosyaları repoya eklenmiyor; veri indirme scriptleriyle gerçek veriler indiriliyor.
 - Veri işleme, analiz ve modelleme için temel notebook altyapısı mevcut, ancak analiz pipeline'ı ve görselleştirme adımları geliştirilmeye açıktır.
 
+## Son Yapılanlar
+
+- Tüm veri temizleme scriptleri (`clean_climate.py`, `clean_disasters.py`, `clean_policies.py`, `clean_gdelt.py`, `clean_trends.py`) PySpark ile yeniden yazıldı.
+- Tüm veri işleme adımları artık Spark DataFrame üzerinde, büyük veri ölçeğinde çalışacak şekilde optimize edildi.
+- Çıktılar CSV yerine Parquet formatında kaydediliyor (büyük veri için daha verimli).
+- Kodlar, Docker ortamında veya yerel Spark ile çalışacak şekilde güncellendi.
+- Her scriptte logging ve hata yönetimi geliştirildi.
+- Veri kalitesi ve temel analiz metrikleri eklendi.
+
+## Big Data Projesine Tam Dönüşüm İçin Yapılması Gerekenler
+
+1. **HDFS Entegrasyonu**
+   - Tüm veri okuma/yazma işlemlerini HDFS üzerinde yapacak şekilde güncelle.
+   - Örnek:  
+     ```python
+     df = spark.read.csv("hdfs:///data/raw/climate/*.csv")
+     df.write.parquet("hdfs:///data/processed/climate")
+     ```
+
+2. **Kafka ile Gerçek Zamanlı Veri Akışı**
+   - Gerekli ise, veri ingestion adımlarında Kafka topic'lerinden veri oku/yaz.
+   - Örnek:
+     ```python
+     df = spark.readStream.format("kafka")...
+     ```
+
+3. **Airflow ile Otomasyon**
+   - Tüm veri pipeline adımlarını Airflow DAG'leri ile otomatikleştir.
+   - Her veri kaynağı için bir DAG oluştur.
+
+4. **Monitoring ve Logging**
+   - Prometheus ve Grafana ile Spark, Kafka, HDFS ve pipeline metriklerini izle.
+   - Logları merkezi bir yerde topla.
+
+5. **Veri Kalitesi ve Test**
+   - Her veri seti için null, tutarlılık ve anomali kontrolleri ekle.
+   - Otomatik test scriptleri yaz.
+
+6. **Hive/Spark SQL ile SQL Analizleri**
+   - Temizlenmiş verileri Hive tablolarına kaydet.
+   - SQL ile analiz ve raporlama yap.
+
+7. **Pipeline ve Kod Standartları**
+   - Tüm scriptlerde modülerlik, hata yönetimi ve logging standartlarını uygula.
+   - Kodun her adımında açıklayıcı docstring ve yorumlar ekle.
+
+8. **Docker Compose ile Tüm Servisleri Yönet**
+   - Hadoop, Spark, Kafka, Airflow, Prometheus, Grafana gibi servisleri tek komutla başlatacak bir `docker-compose.yml` hazırla.
+
+### Yapılanlar
+- [x] Spark ile veri temizleme scriptleri
+- [x] Parquet formatına geçiş
+- [x] Logging ve veri kalitesi metrikleri
+- [x] Docker ortamı ile test
+
+### Yapılacaklar
+- [ ] HDFS entegrasyonu
+- [ ] Kafka ile stream processing
+- [ ] Airflow DAG'leri ile otomasyon
+- [ ] Prometheus & Grafana ile monitoring
+- [ ] Hive/Spark SQL ile analiz
+- [ ] Otomatik test ve veri kalitesi kontrolleri
+
 ## Gereksinimler
 - Docker ve Docker Compose
 - Python 3.8+
