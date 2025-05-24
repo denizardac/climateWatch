@@ -12,12 +12,15 @@ def get_article_text(url: str, max_length: int = 2000, timeout: int = 10) -> Opt
     Verilen URL'den haber metnini çeker. Hatalara karşı dayanıklıdır.
     """
     try:
-        response = requests.get(url, timeout=timeout)
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        }
+        response = requests.get(url, timeout=timeout, headers=headers)
         if response.status_code != 200:
             logging.warning(f"URL {url} - Status code: {response.status_code}")
             return None
         soup = BeautifulSoup(response.content, "html.parser")
-        paragraphs = soup.find_all("p")
+        paragraphs = soup.find_all(["p", "div", "article", "section"])
         text = " ".join([p.get_text() for p in paragraphs])
         return text[:max_length] if text else None
     except Exception as e:

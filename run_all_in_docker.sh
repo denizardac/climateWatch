@@ -16,70 +16,85 @@ log_and_check_output() {
   fi
 }
 
-# 1. Proje dizinine geç
-cd /home/jovyan/climateWatch 2>/dev/null || cd /climateWatch 2>/dev/null || cd /workspace/climateWatch 2>/dev/null || cd /  # fallback
+# Proje dizinine geç
+cd /home/jovyan/work
 
-# 2. Gerekli klasörleri oluştur
-mkdir -p data_storage/gdelt data_storage/climate data_storage/disasters data_storage/policies data_storage/summits data_storage/processed logs analysis_results
+# PYTHONPATH ayarla
+export PYTHONPATH=/home/jovyan/work:$PYTHONPATH
 
-# 3. Gerekli Python paketlerini yükle
-# pip install --user pymongo pyspark kaggle  # Artık gerek yok, Dockerfile requirements.txt ile kuruyor
+# Gerekli klasörleri oluştur
+mkdir -p data_storage/gdelt
+mkdir -p data_storage/processed
+mkdir -p data_storage/summits
+mkdir -p analysis_results/gdelt
+mkdir -p logs
 
-# 4. Config dosyasındaki MongoDB ve Spark ayarlarını kontrol et
-sed -i 's/host: localhost/host: mongodb/' config.yaml
-echo "MongoDB host:"
-grep "host:" config.yaml | grep mongodb
-echo "Spark master:"
-grep "master:" config.yaml | grep spark
+# Config dosyasını kontrol et
+if [ ! -f config.yaml ]; then
+    echo "HATA: config.yaml dosyası bulunamadı!"
+    exit 1
+fi
 
-# 5. Ingestion pipeline'ı çalıştır
-step_log="logs/ingestion.log"
-echo "[$(date_str)] Ingestion başlatılıyor..." | tee "$step_log"
-export PYTHONPATH=.
-python3 -m data_ingestion.run_ingestion 2>&1 | tee -a "$step_log"
-log_and_check_output "Ingestion" "data_storage/gdelt/$(ls data_storage/gdelt | head -n1)" "$step_log"
+# MongoDB ve Spark ayarlarını kontrol et
+MONGO_HOST=$(grep "mongodb_host" config.yaml | cut -d'"' -f2)
+SPARK_MASTER=$(grep "spark_master" config.yaml | cut -d'"' -f2)
 
-# Kaggle ve UNFCCC COP işlemleri için kullanıcıya yol gösterici mesajlar
+echo "MongoDB host: $MONGO_HOST"
+echo "Spark master: $SPARK_MASTER"
+
+# Ingestion
+echo "[$(date_str)] Ingestion başlatılıyor..."
+python3 -m data_ingestion.run_ingestion
+echo "[$(date_str)] Ingestion tamamlandı."
+
+# Ingestion çıktılarını kontrol et
+if [ ! -d "data_storage/gdelt" ] || [ -z "$(ls -A data_storage/gdelt)" ]; then
+    echo "[UYARI] Çıktı dosyası bulunamadı: data_storage/gdelt/"
+fi
+
+# UNFCCC COP zirveleri kontrolü
 if [ ! -f "data_storage/summits/unfccc_cop_summits.csv" ]; then
-  echo "[UYARI] UNFCCC COP zirveleri CSV dosyası eksik! Lütfen https://unfccc.int/process-and-meetings/conferences/past-conferences linkinden indirip data_storage/summits/unfccc_cop_summits.csv olarak kaydedin."
-fi
-if [ ! -f "~/.kaggle/kaggle.json" ]; then
-  echo "[UYARI] Kaggle API anahtarı eksik! Lütfen https://www.kaggle.com/docs/api adresinden anahtarınızı alın ve ~/.kaggle/kaggle.json olarak ekleyin."
-else
-  echo "Kaggle veri seti indirmek ister misiniz? (e/h)"
-  read kaggle_choice
-  if [ "$kaggle_choice" = "e" ]; then
-    echo "Lütfen indirmek istediğiniz Kaggle dataset adını girin (örn: zynicide/wine-reviews):"
-    read kaggle_dataset
-    kaggle datasets download -d $kaggle_dataset -p data_storage/kaggle/
-    echo "Kaggle veri seti indirildi."
-  fi
+    echo "[UYARI] UNFCCC COP zirveleri CSV dosyası eksik! Lütfen https://unfccc.int/process-and-meetings/conferences/past-conferences linkinden indirip data_storage/summits/unfccc_cop_summits.csv olarak kaydedin."
 fi
 
-# 6. Processing pipeline'ı çalıştır
-step_log="logs/processing.log"
-echo "[$(date_str)] Processing başlatılıyor..." | tee "$step_log"
-export PYTHONPATH=.
-python3 -m data_processing.run_processing 2>&1 | tee -a "$step_log"
-log_and_check_output "Processing" "data_storage/processed/cleaned_gdelt.csv" "$step_log"
+# Kaggle API anahtarı kontrolü
+if [ ! -f "/home/jovyan/.kaggle/kaggle.json" ]; then
+    echo "[UYARI] Kaggle API anahtarı eksik! Lütfen https://www.kaggle.com/docs/api adresinden anahtarınızı alın ve ~/.kaggle/kaggle.json olarak ekleyin."
+fi
 
-# 6.5 Scraping + NLP pipeline'ı çalıştır
-step_log="logs/scraping_nlp.log"
-echo "[$(date_str)] Scraping ve NLP başlatılıyor..." | tee "$step_log"
-export PYTHONPATH=.
-python3 -m data_processing.run_scraping_nlp 2>&1 | tee -a "$step_log"
-log_and_check_output "Scraping+NLP" "data_storage/processed/articles_with_sentiment.csv" "$step_log"
+# Processing
+echo "[$(date_str)] Processing başlatılıyor..."
+python3 -m data_processing.run_processing
+echo "[$(date_str)] Processing tamamlandı."
 
-# 7. Raporlama adımı
-step_log="logs/reporting.log"
-echo "[$(date_str)] Raporlama başlatılıyor..." | tee "$step_log"
-export PYTHONPATH=.
-python3 -m data_analysis.reporting 2>&1 | tee -a "$step_log"
-log_and_check_output "Raporlama" "analysis_results/gdelt/summary.csv" "$step_log"
+# Processing çıktılarını kontrol et
+if [ ! -f "data_storage/processed/cleaned_gdelt.csv" ]; then
+    echo "[UYARI] Çıktı dosyası bulunamadı: data_storage/processed/cleaned_gdelt.csv"
+fi
 
-# 8. Sonuçları göster
+# Scraping ve NLP
+echo "[$(date_str)] Scraping ve NLP başlatılıyor..."
+python3 -m data_processing.run_scraping_nlp
+echo "[$(date_str)] Scraping+NLP tamamlandı."
+
+# Scraping ve NLP çıktılarını kontrol et
+if [ ! -f "data_storage/processed/articles_with_sentiment.csv" ]; then
+    echo "[UYARI] Çıktı dosyası bulunamadı: data_storage/processed/articles_with_sentiment.csv"
+fi
+
+# Raporlama
+echo "[$(date_str)] Raporlama başlatılıyor..."
+python3 -m data_analysis.reporting
+echo "[$(date_str)] Raporlama tamamlandı."
+
+# Raporlama çıktılarını kontrol et
+if [ ! -f "analysis_results/gdelt/summary.csv" ]; then
+    echo "[UYARI] Çıktı dosyası bulunamadı: analysis_results/gdelt/summary.csv"
+fi
+
+# Sonuçları göster
 echo "GDELT dosyaları:"
-ls data_storage/gdelt
+ls -l data_storage/gdelt/
 
 echo "Log dosyaları:"
-ls logs/ 
+ls -l logs/ 
