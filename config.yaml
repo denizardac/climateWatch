@@ -41,6 +41,17 @@ spark:
   app_name: climateWatch ETL
   master: local[*]
 
+# HDFS ayarları
+hdfs:
+  namenode_url: http://localhost:9870
+  user: root
+  base_path: /climatewatch
+  data_paths:
+    raw: /climatewatch/raw
+    processed: /climatewatch/processed
+    models: /climatewatch/models
+    temp: /climatewatch/temp
+
 # Diğer parametreler
 general:
   log_file: logs/pipeline.log 

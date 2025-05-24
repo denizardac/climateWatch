@@ -94,4 +94,61 @@ bash run_all_in_docker.sh
 
 ---
 
+## Gerçek Zamanlı Veri Akışı (Streaming)
+
+### Kafka ve Spark Streaming Entegrasyonu
+
+ClimateWatch artık gerçek zamanlı veri akışı ve analiz yeteneklerine sahiptir. Kafka ve Spark Streaming kullanarak anlık iklim verilerini işleyebilir ve analiz edebilirsiniz.
+
+### Streaming Bileşenleri
+
+1. **Kafka Producer**: İklim verilerini Kafka'ya gönderir
+2. **Kafka Consumer**: Ham verileri Kafka'dan okur
+3. **Spark Streaming Processor**: Verileri gerçek zamanlı işler ve analiz eder
+
+### Streaming Kullanımı
+
+1. **Producer Çalıştırma**:
+```bash
+python data_processing/climate_stream_example.py producer
+```
+
+2. **Consumer Çalıştırma**:
+```bash
+python data_processing/climate_stream_example.py consumer
+```
+
+3. **Spark Streaming Processor Çalıştırma**:
+```bash
+python data_processing/climate_stream_example.py processor
+```
+
+### Streaming Özellikleri
+
+- 5 dakikalık pencereler halinde veri analizi
+- Lokasyon bazlı sıcaklık, nem, yağış ve rüzgar hızı ortalamaları
+- Gerçek zamanlı hava kalitesi indeksi takibi
+- Otomatik checkpoint ve hata toleransı
+
+### Streaming Mimarisi
+
+- Kafka topic: climate-data
+- Kafka port: 9092
+- Kafka mode: KRaft (ZooKeeper'sız)
+- Controller port: 9093
+- Spark Streaming pencere boyutu: 5 dakika
+- Watermark: 10 dakika
+
+### Kafka KRaft Yapılandırması
+
+Kafka artık ZooKeeper olmadan KRaft modunda çalışmaktadır. Bu yapılandırma:
+- Daha yüksek performans
+- Daha basit mimari
+- Daha kolay bakım
+- Gelecek Kafka sürümleri için uyumluluk
+
+sağlamaktadır.
+
+---
+
 **ClimateWatch ile büyük veri tabanlı, tam otomatik ve izlenebilir iklim-medya analizi!**
