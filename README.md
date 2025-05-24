@@ -94,4 +94,4 @@ bash run_all_in_docker.sh
 
 ---
 
-**ClimateWatch ile büyük veri tabanlı, tam otomatik ve izlenebilir iklim-medya analizi!** 
+**ClimateWatch ile büyük veri tabanlı, tam otomatik ve izlenebilir iklim-medya analizi!**
