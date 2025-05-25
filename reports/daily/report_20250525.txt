@@ -1,0 +1,17 @@
+Günlük İklim Haberleri Raporu
+Tarih: 2025-05-25
+
+Toplam Makale Sayısı: 25
+Ortalama Duygu Skoru: -0.38
+
+En Olumsuz 3 Haber:
+                                                                                        title  sentiment
+20  Strengthening Climate Partnerships : A round table discussion between Australia and Ghana  -0.462722
+8       German Ambassador pays courtesy call on Minister of Climate Change and Sustainability  -0.452543
+11                                                          为全球气候治理注入更多科学力量 -- 经济 · 科技 -- 人民网  -0.427924
+
+En Olumlu 3 Haber:
+                                                                                                                                                    title  sentiment
+0                                                                                            Grönlands Klima - Zwiespalt - und was Trump damit zu tun hat  -0.227296
+24                                                                                                       जलवायु परिवर्तनको असर मौसमदेखि समाजसम्म - समाचार  -0.306278
+3   Research shows that a majority of Christian religious leaders accept the reality of climate change but have never mentioned it to their congregations  -0.323811

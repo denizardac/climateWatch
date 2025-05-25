@@ -14,7 +14,6 @@ from data_ingestion.ingest_climate import ingest_climate
 from data_ingestion.ingest_disasters import ingest_disasters
 from data_ingestion.ingest_policies import ingest_policies
 from data_ingestion.ingest_summits import ingest_summits
-from data_ingestion.ingest_trends import ingest_trends
 from data_ingestion.ingest_open_datasets import ingest_open_datasets
 from data_ingestion.ingest_kaggle import ingest_kaggle
 from data_ingestion.ingest_pdf import ingest_pdf
@@ -72,10 +71,6 @@ def run_all_ingestions(config):
         ingest_summits(config)
     except Exception as e:
         print(f"Zirve ingestion hatası: {e}")
-    try:
-        ingest_trends(config)
-    except Exception as e:
-        print(f"Trends ingestion hatası: {e}")
     try:
         ingest_open_datasets(config)
     except Exception as e:

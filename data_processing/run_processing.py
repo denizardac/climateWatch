@@ -5,7 +5,6 @@ from data_processing.clean_climate import clean_climate
 from data_processing.clean_disasters import clean_disasters
 from data_processing.clean_policies import clean_policies
 from data_processing.clean_summits import clean_summits
-from data_processing.clean_trends import clean_trends
 from data_processing.clean_open_datasets import clean_open_datasets
 from data_processing.clean_kaggle import clean_kaggle
 from data_processing.clean_pdf import clean_pdf
@@ -31,10 +30,6 @@ def run_all_processing():
         clean_summits()
     except Exception as e:
         print(f"Zirve temizlik hatası: {e}")
-    try:
-        clean_trends()
-    except Exception as e:
-        print(f"Trends temizlik hatası: {e}")
     try:
         clean_open_datasets()
     except Exception as e:

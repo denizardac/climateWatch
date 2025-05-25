@@ -8,11 +8,14 @@ from datetime import datetime
 import re
 import time
 from urllib.parse import urlparse
+from transformers import pipeline
+from typing import List, Dict
 
 # Loglama ayarlarını güncelle
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    filename='logs/nlp_processing.log'
 )
 logger = logging.getLogger(__name__)
 
@@ -128,6 +131,99 @@ def fetch_gdelt_articles(query, start_date, end_date):
         logger.error(f"Hata detayı: {type(e).__name__}")
         return None
 
+def chunk_text(text: str, max_length: int = 400) -> List[str]:
+    """
+    Metni belirli uzunlukta parçalara böler.
+    
+    Args:
+        text (str): Bölünecek metin
+        max_length (int): Maksimum parça uzunluğu
+        
+    Returns:
+        List[str]: Metin parçaları
+    """
+    # Metni cümlelere böl
+    sentences = re.split(r'[.!?]+', text)
+    chunks = []
+    current_chunk = []
+    current_length = 0
+    
+    for sentence in sentences:
+        sentence = sentence.strip()
+        if not sentence:
+            continue
+            
+        # Cümle çok uzunsa, kelimelere böl
+        if len(sentence) > max_length:
+            words = sentence.split()
+            temp_chunk = []
+            temp_length = 0
+            
+            for word in words:
+                if temp_length + len(word) + 1 > max_length:
+                    if temp_chunk:
+                        chunks.append(' '.join(temp_chunk))
+                    temp_chunk = [word]
+                    temp_length = len(word)
+                else:
+                    temp_chunk.append(word)
+                    temp_length += len(word) + 1
+            
+            if temp_chunk:
+                chunks.append(' '.join(temp_chunk))
+            continue
+            
+        if current_length + len(sentence) > max_length:
+            if current_chunk:
+                chunks.append(' '.join(current_chunk))
+            current_chunk = [sentence]
+            current_length = len(sentence)
+        else:
+            current_chunk.append(sentence)
+            current_length += len(sentence)
+    
+    if current_chunk:
+        chunks.append(' '.join(current_chunk))
+    
+    return chunks
+
+def analyze_sentiment(text: str, sentiment_analyzer) -> float:
+    """
+    Metnin duygu analizini yapar.
+    
+    Args:
+        text (str): Analiz edilecek metin
+        sentiment_analyzer: Duygu analizi modeli
+        
+    Returns:
+        float: Duygu skoru (-1 ile 1 arası)
+    """
+    try:
+        # Metni parçalara böl
+        chunks = chunk_text(text)
+        
+        # Her parça için duygu analizi yap
+        sentiments = []
+        for chunk in chunks:
+            if len(chunk.strip()) > 0:
+                try:
+                    result = sentiment_analyzer(chunk)[0]
+                    sentiments.append(result['score'] if result['label'] == 'POSITIVE' else -result['score'])
+                except Exception as e:
+                    logging.warning(f"Parça analizi hatası: {str(e)}")
+                    continue
+        
+        # Parçaların ortalamasını al
+        if sentiments:
+            return sum(sentiments) / len(sentiments)
+        else:
+            logging.warning("Hiç sentiment değeri hesaplanamadı")
+            return 0.0
+        
+    except Exception as e:
+        logging.error(f"Duygu analizi hatası: {str(e)}")
+        return 0.0
+
 def process_gdelt_data(articles_df):
     """
     Makalelere duygu analizi uygular
@@ -138,15 +234,23 @@ def process_gdelt_data(articles_df):
         logger.warning(f"{empty_texts.sum()} makalenin metni boş! Başlıklar kullanılacak.")
         # Boş metinler için başlığı kullan
         articles_df.loc[empty_texts, 'text'] = articles_df.loc[empty_texts, 'title']
+        # Boş metinlerin kaynaklarını logla
+        empty_sources = articles_df.loc[empty_texts, 'source'].unique()
+        logger.info(f"Boş metin içeren kaynaklar: {', '.join(empty_sources)}")
     
     # Duygu analizi uygula
     logger.info("Duygu analizi başlatılıyor...")
+    
+    # Duygu analizi modelini yükle
+    logging.info("Duygu analizi modeli yükleniyor...")
+    sentiment_analyzer = pipeline("sentiment-analysis", model="nlptown/bert-base-multilingual-uncased-sentiment")
+    logging.info("Duygu analizi modeli başarıyla yüklendi")
     
     # Her makale için ayrı ayrı duygu analizi yap ve logla
     sentiments = []
     for idx, row in articles_df.iterrows():
         try:
-            sentiment = get_sentiment(row['text'])
+            sentiment = analyze_sentiment(row['text'], sentiment_analyzer)
             logger.info(f"Makale {idx+1}: {row['title']} - Sentiment: {sentiment}")
             sentiments.append(sentiment)
         except Exception as e:
@@ -163,6 +267,12 @@ def process_gdelt_data(articles_df):
         zero_sentiment_articles = articles_df[articles_df["sentiment"] == 0.0]
         for _, article in zero_sentiment_articles.iterrows():
             logger.info(f"0.0 sentiment: {article['title']} ({article['source']})")
+    
+    # Sentiment istatistiklerini logla
+    avg_sentiment = articles_df["sentiment"].mean()
+    min_sentiment = articles_df["sentiment"].min()
+    max_sentiment = articles_df["sentiment"].max()
+    logger.info(f"Sentiment istatistikleri - Ortalama: {avg_sentiment:.3f}, Min: {min_sentiment:.3f}, Max: {max_sentiment:.3f}")
     
     return articles_df
 
