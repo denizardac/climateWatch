@@ -54,6 +54,30 @@ def download_kaggle_datasets(keyword, target_dir, max_datasets=3, log_path="logs
             print(f"Hata: {ref} -> {dl_result.stderr}")
             logging.error(f"Hata: {ref} -> {dl_result.stderr}")
 
+    # --- MongoDB'ye CSV dosyalarını kaydet ---
+    try:
+        from pymongo import MongoClient
+        import pandas as pd
+        client = MongoClient("mongodb://localhost:27017/")
+        db = client['climatewatch']
+        collection = db['kaggle_data']
+        csv_files = [f for f in os.listdir(target_dir) if f.endswith('.csv')]
+        for csv_file in csv_files:
+            csv_path = os.path.join(target_dir, csv_file)
+            try:
+                df = pd.read_csv(csv_path)
+                collection.delete_many({"source_file": csv_file})
+                records = df.to_dict("records")
+                for rec in records:
+                    rec["source_file"] = csv_file
+                if records:
+                    collection.insert_many(records)
+                    print(f"{csv_file} MongoDB'ye kaydedildi.")
+            except Exception as e:
+                print(f"MongoDB'ye CSV kaydedilemedi: {csv_file} ({e})")
+    except Exception as e:
+        print(f"MongoDB bağlantı hatası: {e}")
+
 if __name__ == "__main__":
     # Komut satırından anahtar kelime ve hedef klasör al
     import argparse

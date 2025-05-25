@@ -8,6 +8,7 @@ import argparse
 import pandas as pd
 import os
 import logging
+from pymongo import MongoClient
 
 def setup_logger(log_path):
     os.makedirs(os.path.dirname(log_path), exist_ok=True)
@@ -27,6 +28,34 @@ def fetch_summits(target_dir, csv_path=None, log_path="logs/data_ingestion.log")
         df.to_csv(out_path, index=False)
         print(f"Zirve verisi kaydedildi: {out_path}")
         logging.info(f"Zirve verisi kaydedildi: {out_path}")
+
+        # Kafka'ya veri gönder
+        try:
+            from utils.kafka_utils import ClimateDataProducer
+            producer = ClimateDataProducer(bootstrap_servers=['localhost:9092'], topic='summit-data')
+            for idx, record in enumerate(df.to_dict("records")):
+                producer.send_climate_data(key=str(idx), data=record)
+            producer.close()
+            print("Zirve verisi Kafka'ya gönderildi.")
+            logging.info("Zirve verisi Kafka'ya gönderildi.")
+        except Exception as e:
+            print(f"Kafka'ya veri gönderilemedi: {e}")
+            logging.error(f"Kafka'ya veri gönderilemedi: {e}")
+
+        # MongoDB'ye veri kaydet
+        try:
+            client = MongoClient("mongodb://localhost:27017/")
+            db = client['climatewatch']
+            collection = db['climate_summits']
+            collection.delete_many({})
+            records = df.to_dict("records")
+            if records:
+                collection.insert_many(records)
+                print("Zirve verisi MongoDB'ye kaydedildi.")
+                logging.info("Zirve verisi MongoDB'ye kaydedildi.")
+        except Exception as e:
+            print(f"MongoDB'ye veri kaydedilemedi: {e}")
+            logging.error(f"MongoDB'ye veri kaydedilemedi: {e}")
     else:
         print("Lütfen UNFCCC COP zirveleri CSV dosyasını indirip --csv_path ile belirtin.")
         logging.error("UNFCCC COP zirveleri CSV dosyası eksik veya yolu yanlış.")

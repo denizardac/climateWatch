@@ -70,6 +70,29 @@ def extract_and_clean(target_dir, log_path="logs/data_ingestion.log"):
                 print(f"Silme hatası: {f} ({e})")
                 logging.error(f"Silme hatası: {f} ({e})")
 
+    # --- MongoDB'ye CSV dosyalarını kaydet ---
+    try:
+        from pymongo import MongoClient
+        import pandas as pd
+        client = MongoClient("mongodb://localhost:27017/")
+        db = client['climatewatch']
+        collection = db['open_datasets']
+        csv_files = glob.glob(os.path.join(target_dir, '*.csv'))
+        for csv_path in csv_files:
+            try:
+                df = pd.read_csv(csv_path)
+                collection.delete_many({"source_file": os.path.basename(csv_path)})
+                records = df.to_dict("records")
+                for rec in records:
+                    rec["source_file"] = os.path.basename(csv_path)
+                if records:
+                    collection.insert_many(records)
+                    print(f"{csv_path} MongoDB'ye kaydedildi.")
+            except Exception as e:
+                print(f"MongoDB'ye CSV kaydedilemedi: {csv_path} ({e})")
+    except Exception as e:
+        print(f"MongoDB bağlantı hatası: {e}")
+
 if __name__ == "__main__":
     # Örnek kullanım: scripti elle çalıştırırken linkleri buraya ekleyebilirsin
     import argparse

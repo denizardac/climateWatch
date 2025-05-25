@@ -33,6 +33,19 @@ def fetch_and_save_climate_data(target_dir="data_storage/climate", save_to_mongo
             collection.insert_many(df.to_dict("records"))
             print("Veri MongoDB'ye kaydedildi.")
             logging.info("İklim verisi MongoDB'ye kaydedildi.")
+
+        # Kafka'ya veri gönder
+        try:
+            from utils.kafka_utils import ClimateDataProducer
+            producer = ClimateDataProducer(bootstrap_servers=['localhost:9092'], topic='climate-data')
+            for idx, record in enumerate(df.to_dict("records")):
+                producer.send_climate_data(key=str(idx), data=record)
+            producer.close()
+            print("Veri Kafka'ya gönderildi.")
+            logging.info("İklim verisi Kafka'ya gönderildi.")
+        except Exception as e:
+            print(f"Kafka'ya veri gönderilemedi: {e}")
+            logging.error(f"Kafka'ya veri gönderilemedi: {e}")
     except Exception as e:
         print(f"Hata oluştu: {e}")
         logging.error(f"Hata oluştu: {e}")

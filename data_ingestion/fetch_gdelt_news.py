@@ -31,12 +31,10 @@ def fetch_gdelt_for_date(date, target_dir="data_storage/gdelt", save_to_mongo=Tr
         csv_filename = z.namelist()[0]
         with z.open(csv_filename) as f:
             df = pd.read_csv(f, sep='\t', header=None, low_memory=False)
-        os.makedirs(target_dir, exist_ok=True)
-        csv_path = os.path.join(target_dir, f"{date_str}.csv")
+        # CSV'ye kaydetme kaldırıldı
         df['date'] = date.strftime("%Y-%m-%d")
-        df.to_csv(csv_path, index=False)
-        print(f"{date_str} verisi indirildi ve kaydedildi: {csv_path}")
-        logging.info(f"{date_str} GDELT verisi indirildi ve kaydedildi: {csv_path}")
+        print(f"{date_str} verisi indirildi ve bellekte işlendi.")
+        logging.info(f"{date_str} GDELT verisi indirildi ve bellekte işlendi.")
 
         # Filtreleme
         if keywords:
@@ -58,6 +56,19 @@ def fetch_gdelt_for_date(date, target_dir="data_storage/gdelt", save_to_mongo=Tr
             collection.insert_many(records)
             print("Veri MongoDB'ye kaydedildi.")
             logging.info(f"{date_str} verisi MongoDB'ye kaydedildi.")
+
+        # Kafka'ya veri gönder
+        try:
+            from utils.kafka_utils import ClimateDataProducer
+            producer = ClimateDataProducer(bootstrap_servers=['localhost:9092'], topic='gdelt-data')
+            for idx, record in enumerate(df.to_dict("records")):
+                producer.send_climate_data(key=str(idx), data=record)
+            producer.close()
+            print("Veri Kafka'ya gönderildi.")
+            logging.info(f"{date_str} verisi Kafka'ya gönderildi.")
+        except Exception as e:
+            print(f"Kafka'ya veri gönderilemedi: {e}")
+            logging.error(f"Kafka'ya veri gönderilemedi: {e}")
     except Exception as e:
         print(f"Hata oluştu: {e}")
         logging.error(f"Hata oluştu: {e}")
@@ -71,14 +82,25 @@ if __name__ == "__main__":
     parser.add_argument('--keywords', type=str, nargs='*', default=["CLIMATE", "ENVIRONMENT", "WEATHER", "GLOBAL WARMING", "CO2", "CARBON", "EMISSION"], help='Filtre anahtar kelimeleri')
     parser.add_argument('--log_path', type=str, default="logs/data_ingestion.log", help='Log dosyası yolu')
     parser.add_argument('--mongo_host', type=str, default="mongodb", help='MongoDB host adresi (localhost veya mongodb)')
+    parser.add_argument('--monthly', action='store_true', help='Aylık veri çek (her ayın ilk günü)')
     args = parser.parse_args()
 
     if args.start_date and args.end_date:
         start = datetime.strptime(args.start_date, "%Y%m%d")
         end = datetime.strptime(args.end_date, "%Y%m%d")
-        delta = (end - start).days
-        for i in range(delta + 1):
-            fetch_gdelt_for_date(start + timedelta(days=i), target_dir=args.target_dir, save_to_mongo=not args.no_mongo, keywords=args.keywords, log_path=args.log_path, mongo_host=args.mongo_host)
+        if args.monthly:
+            current = start
+            while current <= end:
+                fetch_gdelt_for_date(current, target_dir=args.target_dir, save_to_mongo=not args.no_mongo, keywords=args.keywords, log_path=args.log_path, mongo_host=args.mongo_host)
+                # Bir sonraki ayın ilk günü
+                if current.month == 12:
+                    current = current.replace(year=current.year+1, month=1, day=1)
+                else:
+                    current = current.replace(month=current.month+1, day=1)
+        else:
+            delta = (end - start).days
+            for i in range(delta + 1):
+                fetch_gdelt_for_date(start + timedelta(days=i), target_dir=args.target_dir, save_to_mongo=not args.no_mongo, keywords=args.keywords, log_path=args.log_path, mongo_host=args.mongo_host)
     else:
         # Varsayılan: son 7 gün
         for i in range(7):

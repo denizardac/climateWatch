@@ -8,6 +8,9 @@ import argparse
 import requests
 import os
 import logging
+import pandas as pd
+from utils.kafka_utils import ClimateDataProducer
+from pymongo import MongoClient
 
 def setup_logger(log_path):
     os.makedirs(os.path.dirname(log_path), exist_ok=True)
@@ -29,6 +32,34 @@ def fetch_policy_changes(target_dir, log_path="logs/data_ingestion.log"):
             f.write(response.content)
         print(f"Politika değişikliği verisi kaydedildi: {out_path}")
         logging.info(f"Politika değişikliği verisi kaydedildi: {out_path}")
+
+        # Kafka'ya veri gönder
+        try:
+            df = pd.read_csv(out_path)
+            producer = ClimateDataProducer(bootstrap_servers=['localhost:9092'], topic='policy-data')
+            for idx, record in enumerate(df.to_dict("records")):
+                producer.send_climate_data(key=str(idx), data=record)
+            producer.close()
+            print("Politika verisi Kafka'ya gönderildi.")
+            logging.info("Politika verisi Kafka'ya gönderildi.")
+        except Exception as e:
+            print(f"Kafka'ya veri gönderilemedi: {e}")
+            logging.error(f"Kafka'ya veri gönderilemedi: {e}")
+
+        # MongoDB'ye veri kaydet
+        try:
+            client = MongoClient("mongodb://localhost:27017/")
+            db = client['climatewatch']
+            collection = db['policy_changes']
+            collection.delete_many({})
+            records = df.to_dict("records")
+            if records:
+                collection.insert_many(records)
+                print("Politika değişikliği verisi MongoDB'ye kaydedildi.")
+                logging.info("Politika değişikliği verisi MongoDB'ye kaydedildi.")
+        except Exception as e:
+            print(f"MongoDB'ye veri kaydedilemedi: {e}")
+            logging.error(f"MongoDB'ye veri kaydedilemedi: {e}")
     else:
         print(f"API hatası: {response.status_code}. Dosya indirilemedi.")
         logging.error(f"API hatası: {response.status_code}. Dosya indirilemedi.")

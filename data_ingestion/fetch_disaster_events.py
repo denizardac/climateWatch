@@ -9,6 +9,7 @@ import requests
 import os
 import json
 import logging
+from pymongo import MongoClient
 
 def setup_logger(log_path):
     os.makedirs(os.path.dirname(log_path), exist_ok=True)
@@ -37,6 +38,39 @@ def fetch_disaster_events(api_url, start_date, end_date, target_dir, log_path="l
             json.dump(data, f, ensure_ascii=False, indent=2)
         print(f"Afet verisi kaydedildi: {out_path}")
         logging.info(f"Afet verisi kaydedildi: {out_path}")
+
+        # Kafka'ya veri gönder
+        try:
+            from utils.kafka_utils import ClimateDataProducer
+            producer = ClimateDataProducer(bootstrap_servers=['localhost:9092'], topic='disaster-data')
+            # ReliefWeb API'den dönen veri yapısına göre 'data' anahtarını kontrol et
+            records = data.get('data', []) if isinstance(data, dict) else []
+            for idx, record in enumerate(records):
+                producer.send_climate_data(key=str(idx), data=record)
+            producer.close()
+            print("Afet verisi Kafka'ya gönderildi.")
+            logging.info("Afet verisi Kafka'ya gönderildi.")
+        except Exception as e:
+            print(f"Kafka'ya veri gönderilemedi: {e}")
+            logging.error(f"Kafka'ya veri gönderilemedi: {e}")
+
+        # MongoDB'ye veri kaydet
+        try:
+            client = MongoClient("mongodb://localhost:27017/")
+            db = client['climatewatch']
+            collection = db['disaster_events']
+            # Aynı tarih aralığına ait kayıtları sil
+            collection.delete_many({"date_range": f"{start_date}_{end_date}"})
+            records = data.get('data', []) if isinstance(data, dict) else []
+            for rec in records:
+                rec["date_range"] = f"{start_date}_{end_date}"
+            if records:
+                collection.insert_many(records)
+                print("Afet verisi MongoDB'ye kaydedildi.")
+                logging.info("Afet verisi MongoDB'ye kaydedildi.")
+        except Exception as e:
+            print(f"MongoDB'ye veri kaydedilemedi: {e}")
+            logging.error(f"MongoDB'ye veri kaydedilemedi: {e}")
     else:
         print(f"API hatası: {response.status_code}")
         logging.error(f"API hatası: {response.status_code}")

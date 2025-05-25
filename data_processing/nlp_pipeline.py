@@ -81,4 +81,4 @@ def batch_sentiment(texts: list) -> list:
     """
     Metin listesi için toplu duygu analizi yapar
     """
-    return [get_sentiment(text) for text in texts] 
+    return [get_sentiment(text) if text is not None else None for text in texts] 

@@ -16,5 +16,20 @@ def ingest_trends(config, log_path='logs/ingestion_trends.log'):
                 with open(fpath, 'r', encoding='utf-8', errors='ignore') as f:
                     lines = sum(1 for _ in f)
                 logging.info(f"Trends çıktı: {fpath} | Boyut: {size} bytes | Satır: {lines}")
+
+                # Kafka'ya veri gönder
+                try:
+                    import pandas as pd
+                    from utils.kafka_utils import ClimateDataProducer
+                    df = pd.read_csv(fpath)
+                    producer = ClimateDataProducer(bootstrap_servers=['localhost:9092'], topic='trends-data')
+                    for idx, record in enumerate(df.to_dict("records")):
+                        producer.send_climate_data(key=str(idx), data=record)
+                    producer.close()
+                    print(f"{fname} trends verisi Kafka'ya gönderildi.")
+                    logging.info(f"{fname} trends verisi Kafka'ya gönderildi.")
+                except Exception as e:
+                    print(f"Kafka'ya veri gönderilemedi: {e}")
+                    logging.error(f"Kafka'ya veri gönderilemedi: {e}")
     except Exception as e:
         logging.error(f"Trends ingestion hatası: {e}") 
